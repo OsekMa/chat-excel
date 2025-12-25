@@ -8,7 +8,7 @@ st.set_page_config(page_title="Excel AI 助手", page_icon="🤖")
 st.title("🤖 AI Excel 对话助手")
 
 # 获取 API Key (稍后在网页后台填，不要写在代码里)
-api_key = st.secrets.get("AIzaSyDlbW2qFT0qsk8RN4T325ifFePJyj5qmE4")
+api_key = st.secrets.get("GOOGLE_API_KEY")
 
 if not api_key:
     st.error("请在后台设置 GOOGLE_API_KEY")
