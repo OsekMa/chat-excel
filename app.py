@@ -71,7 +71,7 @@ if uploaded_file:
             try:
                 # 尝试使用更强的模型，如果失败会自动回退
                 try:
-                    model = genai.GenerativeModel('gemini-1.5-flash-001')
+                    model = genai.GenerativeModel('gemini-2.5-flash')
                 except:
                     model = genai.GenerativeModel('gemini-pro')
 
