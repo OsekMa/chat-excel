@@ -4,10 +4,54 @@ import google.generativeai as genai
 import io
 import time
 
+
 # --- 页面配置 ---
 st.set_page_config(page_title="AI Excel 超级助手", page_icon="🚀", layout="wide")
 st.title("🚀 AI Excel 超级助手")
+# --- 🎨 CSS 样式美化区 ---
+st.markdown("""
+<style>
+    /* 1. 隐藏默认的菜单和页脚 */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
 
+    /* 2. 全局字体优化 */
+    html, body, [class*="css"] {
+        font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    }
+
+    /* 3. 按钮美化 (渐变色+圆角) */
+    div.stButton > button {
+        background: linear-gradient(45deg, #4b6cb7, #182848);
+        color: white;
+        border: none;
+        border-radius: 20px;
+        padding: 10px 24px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+    div.stButton > button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    /* 4. 侧边栏美化 */
+    section[data-testid="stSidebar"] {
+        background-color: #f8f9fa;
+        border-right: 1px solid #e0e0e0;
+    }
+    
+    /* 5. 表格区域加个卡片阴影效果 */
+    div[data-testid="stDataFrame"] {
+        background: white;
+        padding: 10px;
+        border-radius: 10px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+</style>
+""", unsafe_allow_html=True)
+# -------------------------
 # --- 1. 获取 API Key ---
 api_key = st.secrets.get("GOOGLE_API_KEY")
 if not api_key:
