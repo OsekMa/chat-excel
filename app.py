@@ -110,7 +110,7 @@ if uploaded_file:
             try:
                 # 模型加载
                 try:
-                    model = genai.GenerativeModel('gemini-1.5-flash-001')
+                    model = genai.GenerativeModel('gemini-2.5-flash')
                 except:
                     model = genai.GenerativeModel('gemini-pro')
 
