@@ -3,55 +3,20 @@ import pandas as pd
 import google.generativeai as genai
 import io
 import time
+import matplotlib.pyplot as plt
+import matplotlib
 
+# --- 解决 Matplotlib 中文乱码和后端问题 ---
+matplotlib.use('Agg') # 这是一个非交互式后端，适合服务器环境
+# 尝试设置中文字体，Streamlit Cloud 默认没有中文字体，通常会回退到 sans-serif
+# 如果需要完美中文支持，建议让 AI 使用 Streamlit 原生图表 (st.bar_chart)
+plt.rcParams['font.sans-serif'] = ['sans-serif'] 
+plt.rcParams['axes.unicode_minus'] = False 
 
 # --- 页面配置 ---
 st.set_page_config(page_title="AI Excel 超级助手", page_icon="🚀", layout="wide")
 st.title("🚀 AI Excel 超级助手")
-# --- 🎨 CSS 样式美化区 ---
-st.markdown("""
-<style>
-    /* 1. 隐藏默认的菜单和页脚 */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
 
-    /* 2. 全局字体优化 */
-    html, body, [class*="css"] {
-        font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-    }
-
-    /* 3. 按钮美化 (渐变色+圆角) */
-    div.stButton > button {
-        background: linear-gradient(45deg, #4b6cb7, #182848);
-        color: white;
-        border: none;
-        border-radius: 20px;
-        padding: 10px 24px;
-        font-weight: bold;
-        transition: all 0.3s ease;
-    }
-    div.stButton > button:hover {
-        transform: scale(1.05);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    }
-
-    /* 4. 侧边栏美化 */
-    section[data-testid="stSidebar"] {
-        background-color: #f8f9fa;
-        border-right: 1px solid #e0e0e0;
-    }
-    
-    /* 5. 表格区域加个卡片阴影效果 */
-    div[data-testid="stDataFrame"] {
-        background: white;
-        padding: 10px;
-        border-radius: 10px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    }
-</style>
-""", unsafe_allow_html=True)
-# -------------------------
 # --- 1. 获取 API Key ---
 api_key = st.secrets.get("GOOGLE_API_KEY")
 if not api_key:
@@ -83,10 +48,9 @@ if uploaded_file:
     
     df = st.session_state.df
 
-    # --- 🔥 关键修复：类型安全检查 🔥 ---
-    # 如果 df 变质了（不是表格了），就强制恢复
+    # 类型安全检查
     if not isinstance(df, pd.DataFrame):
-        st.warning("⚠️ 检测到数据格式异常（可能 AI 把表格变成了一个值），已自动重置数据。")
+        st.warning("⚠️ 数据异常，已自动重置。")
         st.session_state.df = pd.read_excel(uploaded_file)
         df = st.session_state.df
         st.rerun()
@@ -95,31 +59,28 @@ if uploaded_file:
     st.subheader("📊 数据全览")
     st.dataframe(df, use_container_width=True, height=400)
     
-    # 这里加了保护，确保 df 真的是个表格才读取 shape
     if hasattr(df, 'shape'):
         st.caption(f"当前共 {df.shape[0]} 行, {df.shape[1]} 列数据")
 
     # --- 聊天输入 ---
     st.divider()
-    user_query = st.chat_input("💡 请下达指令，例如：'把销售额大于500的标红'...")
+    user_query = st.chat_input("💡 请输入指令，例如：'画一个柱状图展示各分类的数量'...")
 
     if user_query:
         with st.status("🤖 AI 正在干活...", expanded=True) as status:
             st.write("1️⃣ 正在思考 Python 解决方案...")
             
             try:
-                # 模型加载
                 try:
                     model = genai.GenerativeModel('gemini-2.5-flash')
                 except:
                     model = genai.GenerativeModel('gemini-pro')
 
-                # 获取列信息（防止报错）
                 dtypes_info = df.dtypes.to_string() if hasattr(df, 'dtypes') else "无"
 
-                # Prompt
+                # --- 🔥 升级后的提示词：教 AI 画图 🔥 ---
                 prompt = f"""
-                你是一个 Python Pandas 高级专家。
+                你是一个 Python Pandas 和 Streamlit 专家。
                 
                 【当前数据情况】
                 变量名: `df`
@@ -129,13 +90,23 @@ if uploaded_file:
                 【用户任务】
                 "{user_query}"
                 
-                【绝对禁令】
-                1. 严禁将 `df` 赋值为非 DataFrame 对象（如数字、列表、Series）。
-                2. 如果用户要求计算（如“求和”、“计数”），请不要修改 `df`，而是新建变量并使用 `print()` 输出结果。
-                3. 只有在需要修改表格结构/内容时，才对 `df` 进行赋值。
+                【关键规则 - 必读】
+                1. **关于画图**：
+                   - 优先使用 Streamlit 原生图表，因为它们支持中文且可交互：
+                     - 柱状图用 `st.bar_chart(data)`
+                     - 折线图用 `st.line_chart(data)`
+                     - 散点图用 `st.scatter_chart(data)`
+                   - 如果必须使用 `matplotlib`：
+                     - **严禁**使用 `plt.show()` (在网页里无效)。
+                     - 画完图后，必须调用 `st.pyplot(plt)` 来把图展示出来。
+                     - 设置 `plt.figure(figsize=(10, 5))`。
                 
-                【输出要求】
-                只输出 Python 代码，不要 ```python 标记。
+                2. **关于数据修改**：
+                   - 如果是修改数据，直接操作 `df`。
+                   - 严禁把 `df` 变成非 DataFrame 对象。
+                
+                3. **关于输出**：
+                   - 只输出 Python 代码，不要 markdown 标记。
                 """
                 
                 # 生成
@@ -145,13 +116,22 @@ if uploaded_file:
                 
                 # 执行
                 st.write("2️⃣ 正在执行...")
-                # 捕获 print 输出
+                
+                # 捕获文字输出
                 from io import StringIO
                 import sys
                 captured_output = StringIO()
                 sys.stdout = captured_output
                 
-                local_vars = {'df': df, 'pd': pd, 'st': st}
+                # --- 把绘图库传给 AI ---
+                local_vars = {
+                    'df': df, 
+                    'pd': pd, 
+                    'st': st, 
+                    'plt': plt, # 把 matplotlib 传进去
+                    'matplotlib': matplotlib
+                }
+                
                 exec(code, globals(), local_vars)
                 
                 # 恢复标准输出
@@ -161,15 +141,15 @@ if uploaded_file:
                 if output_str:
                     st.info(f"🖨️ 计算结果:\n{output_str}")
 
-                # 检查执行后的 df 是否还是个表格
+                # 更新数据状态
                 new_df = local_vars.get('df')
                 if isinstance(new_df, pd.DataFrame):
                     st.session_state.df = new_df
-                    status.update(label="✅ 表格已修改！", state="complete", expanded=False)
+                    status.update(label="✅ 任务完成！", state="complete", expanded=False)
                     time.sleep(1)
                     st.rerun()
                 else:
-                    status.update(label="✅ 计算完成 (表格未变动)", state="complete", expanded=False)
+                    status.update(label="✅ 任务完成", state="complete", expanded=False)
                 
             except Exception as e:
                 status.update(label="❌ 执行失败", state="error")
